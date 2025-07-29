@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ابزار تولید آزمون</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Vazirmatn for Persian UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Libraries for File Handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://unpkg.com/mammoth@1.4.18/mammoth.browser.min.js"></script>
+    
+    <!-- MathJax Configuration -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      chtml: {
+        fontURL: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2'
+      }
+    };
+    </script>
+    <!-- MathJax for LaTeX Rendering -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        .tab-button.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        mjx-container {
+            direction: ltr;
+            text-align: right;
+            display: inline-block;
+        }
+        #results {
+            line-height: 2.2;
+        }
+        
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #output-container, #output-container * {
+                visibility: visible;
+            }
+            #output-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: auto !important; 
+                overflow-y: visible !important;
+                border: none;
+            }
+            .lg\:col-span-2 {
+                visibility: visible !important;
+            }
+        }
+        
+        /* Dark mode styles */
+        .dark {
+            background-color: #1a202c;
+            color: #edf2f7;
+        }
+        .dark .bg-slate-50 {
+            background-color: #2d3748;
+        }
+        .dark .text-slate-800 {
+            color: #edf2f7;
+        }
+        .dark .bg-white {
+            background-color: #4a5568;
+        }
+        .dark .border-slate-200 {
+            border-color: #718096;
+        }
+        .dark .border-slate-300 {
+            border-color: #a0aec0;
+        }
+        .dark .text-slate-700 {
+            color: #cbd5e0;
+        }
+        .dark .text-slate-500 {
+            color: #a0aec0;
+        }
+        .dark .text-slate-400 {
+            color: #718096;
+        }
+        .dark .bg-slate-100 {
+            background-color: #718096;
+        }
+        .dark .hover\:bg-slate-200:hover {
+            background-color: #a0aec0;
+        }
+        .dark input[type="text"], 
+        .dark input[type="password"], 
+        .dark textarea, 
+        .dark select {
+            background-color: #4a5568;
+            color: #edf2f7;
+            border-color: #718096;
+        }
+        .dark input[type="text"]:focus, 
+        .dark input[type="password"]:focus, 
+        .dark textarea:focus, 
+        .dark select:focus {
+            border-color: #3182ce;
+            background-color: #4a5568;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl flex flex-col flex-1">
+        <!-- Header -->
+        <header class="text-center mb-8 flex-shrink-0 relative">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">📝  تولید آزمون با هوش مصنوعی</h1>
+            <!-- Controls -->
+            <div class="absolute top-0 right-0 flex items-center space-x-4 space-x-reverse">
+                <!-- Language Toggle -->
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span class="text-sm text-slate-600">FA</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-language" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                    <span class="text-sm text-slate-600">EN</span>
+                </div>
+                <!-- Dark Mode Toggle -->
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <span class="text-sm text-slate-600">🌙</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-dark-mode" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                    <span class="text-sm text-slate-600">☀️</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- API Key Input -->
+        <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex-shrink-0">
+            <div class="flex justify-between items-center mb-2">
+                <label for="apiKey" class="block text-sm font-bold text-slate-700">🔑 کلید API Gemini</label>
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline font-medium">دریافت کلید از اینجا</a>
+            </div>
+            <input type="password" id="apiKey" placeholder="کلید API خود را اینجا وارد کنید..." class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" style="direction: ltr; text-align: right;">
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+            <!-- Left Column: Input & Controls -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Content Input Section -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h2 class="text-lg font-bold mb-3 text-slate-800"> منبع سوال (اختیاری)</h2>
+                    <!-- Tabs -->
+                    <div class="flex border-b border-slate-200 mb-4">
+                        <button id="text-tab-btn" class="tab-button active flex-1 py-2 px-4 text-sm border-b-2">متن</button>
+                        <button id="file-tab-btn" class="tab-button flex-1 py-2 px-4 text-sm border-b-2">فایل</button>
+                    </div>
+                    <!-- Tab Content -->
+                    <div id="text-tab-content">
+                        <textarea id="text-input" rows="10" class="w-full p-2 border border-slate-300 rounded-md focus:ring-1 focus:ring-blue-400" placeholder="برای طرح سوال از متن خاص، آن را اینجا وارد کنید..."></textarea>
+                    </div>
+                    <div id="file-tab-content" class="hidden">
+                        <input type="file" id="file-input" accept=".pdf,.docx" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <p id="file-status" class="text-xs text-green-600 mt-2"></p>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex justify-center">
+                    <button id="generate-btn" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 shadow-md">
+                        🚀 تولید سوالات
+                    </button>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 control-panel space-y-4">
+                    <h2 class="text-lg font-bold mb-2 text-slate-800"> تنظیمات سوالات</h2>
+                    
+                    <!-- Subject and Grade Selection -->
+                    <div>
+                        <label for="subject" class="block text-sm font-medium mb-1">درس</label>
+                        <select id="subject" class="w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="عمومی">انتخاب کنید...</option>
+                            <option value="زبان انگلیسی">زبان انگلیسی</option>
+                            <option value="زیست شناسی">زیست شناسی</option>
+                            <option value="فیزیک">فیزیک</option>
+                            <option value="ریاضی">ریاضی</option>
+                            <option value="شیمی">شیمی</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="grade" class="block text-sm font-medium mb-1">پایه تحصیلی</label>
+                        <select id="grade" class="w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="عمومی">انتخاب کنید...</option>
+                            <optgroup label="دوره ابتدایی">
+                                <option value="پایه اول ابتدایی">پایه اول</option>
+                                <option value="پایه دوم ابتدایی">پایه دوم</option>
+                                <option value="پایه سوم ابتدایی">پایه سوم</option>
+                                <option value="پایه چهارم ابتدایی">پایه چهارم</option>
+                                <option value="پایه پنجم ابتدایی">پایه پنجم</option>
+                                <option value="پایه ششم ابتدایی">پایه ششم</option>
+                            </optgroup>
+                            <optgroup label="دوره متوسطه اول">
+                                <option value="پایه هفتم">پایه هفتم</option>
+                                <option value="پایه هشتم">پایه هشتم</option>
+                                <option value="پایه نهم">پایه نهم</option>
+                            </optgroup>
+                            <optgroup label="دوره متوسطه دوم">
+                                <option value="پایه دهم">پایه دهم</option>
+                                <option value="پایه یازدهم">پایه یازدهم</option>
+                                <option value="پایه دوازدهم">پایه دوازدهم</option>
+                            </optgroup>
+                             <optgroup label="دانشگاه">
+                                <option value="دانشگاهی">دانشگاهی</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div>
+                        <label for="question-type" class="block text-sm font-medium mb-1">نوع سوال</label>
+                        <select id="question-type" class="w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="چهارگزینه‌ای با گزینه‌های انحرافی منطقی">چهارگزینه‌ای</option>
+                            <option value="صحیح/غلط">صحیح/غلط</option>
+                            <option value="تشریحی کوتاه پاسخ">تشریحی (کوتاه پاسخ)</option>
+                            <option value="تشریحی بلند پاسخ">تشریحی (بلند پاسخ)</option>
+                            <option value="جای خالی">جای خالی</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="difficulty" class="block text-sm font-medium mb-1">سطح دشواری</label>
+                        <select id="difficulty" class="w-full p-2 border border-slate-300 rounded-md bg-white">
+                            <option value="آسان">آسان</option>
+                            <option value="متوسط">متوسط</option>
+                            <option value="سخت">سخت</option>
+                            <option value="بر اساس طبقه‌بندی بلوم (تمرکز بر تحلیل و ارزیابی)">پیشرفته (طبقه‌بندی بلوم)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="question-count" class="block text-sm font-medium mb-1">تعداد سوالات: <span id="question-count-label" class="font-bold text-blue-600">5</span></label>
+                        <input type="range" id="question-count" min="1" max="10" value="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                     <div class="space-y-3 pt-2">
+                        <div class="flex items-center">
+                            <input id="include-answers" type="checkbox" checked class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="include-answers" class="mr-2 text-sm font-medium text-slate-700">همراه با پاسخنامه</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="include-hints" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label for="include-hints" class="mr-2 text-sm font-medium text-slate-700">همراه با راهنما و توضیحات تفصیلی</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Output -->
+            <div class="lg:col-span-2 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-slate-200 flex flex-col">
+                <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                    <h2 class="text-lg font-bold text-slate-800">سوالات</h2>
+                    <div id="output-actions" class="hidden space-x-2 space-x-reverse">
+                        <button id="copy-btn" title="کپی کردن متن" class="p-2 rounded-md bg-slate-100 hover:bg-slate-200 transition-all">📋</button>
+                        <button id="pdf-btn" title="چاپ / ذخیره PDF" class="p-2 rounded-md bg-slate-100 hover:bg-slate-200 transition-all">📄</button>
+                    </div>
+                </div>
+                <!-- Section Toggle Controls -->
+                <div id="section-toggles" class="hidden mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <span class="text-sm font-medium text-blue-800" id="sections-label">Show Sections:</span>
+                        <label class="flex items-center space-x-2 space-x-reverse">
+                            <input type="checkbox" id="toggle-questions" checked class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-blue-700" id="toggle-questions-text">Questions</span>
+                        </label>
+                        <label id="toggle-answers-label" class="hidden flex items-center space-x-2 space-x-reverse">
+                            <input type="checkbox" id="toggle-answers" checked class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-blue-700" id="toggle-answers-text">Answer Key</span>
+                        </label>
+                        <label id="toggle-hints-label" class="hidden flex items-center space-x-2 space-x-reverse">
+                            <input type="checkbox" id="toggle-hints" checked class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-blue-700" id="toggle-hints-text">Hints</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="output-container" class="prose prose-sm sm:prose-base max-w-none p-4 bg-slate-50 border rounded-md flex-1 overflow-y-auto">
+                    <div id="placeholder" class="flex flex-col items-center justify-center h-full text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0-0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <p class="text-center">سوالات تولید شده در اینجا نمایش داده می‌شوند.</p>
+                    </div>
+                    <div id="loader" class="hidden flex-col items-center justify-center h-full">
+                        <div class="loader"></div>
+                        <p class="mt-4 text-slate-500">در حال پردازش... لطفاً صبر کنید.</p>
+                    </div>
+                    <div id="results" class="hidden"></div>
+                </div>
+                 <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-green-500 text-white py-2 px-5 rounded-full text-sm shadow-lg opacity-0 transition-opacity duration-300">
+                    پیام
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    window.addEventListener('DOMContentLoaded', () => {
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js`;
+        }
+
+        const apiKeyInput = document.getElementById('apiKey');
+        const textInput = document.getElementById('text-input');
+        const fileInput = document.getElementById('file-input');
+        const fileStatus = document.getElementById('file-status');
+        const textTabBtn = document.getElementById('text-tab-btn');
+        const fileTabBtn = document.getElementById('file-tab-btn');
+        const textTabContent = document.getElementById('text-tab-content');
+        const fileTabContent = document.getElementById('file-tab-content');
+        const subjectSelect = document.getElementById('subject');
+        const gradeSelect = document.getElementById('grade');
+        const questionTypeSelect = document.getElementById('question-type');
+        const difficultySelect = document.getElementById('difficulty');
+        const questionCountSlider = document.getElementById('question-count');
+        const questionCountLabel = document.getElementById('question-count-label');
+        const includeAnswersCheckbox = document.getElementById('include-answers');
+        const includeHintsCheckbox = document.getElementById('include-hints');
+        const generateBtn = document.getElementById('generate-btn');
+        const placeholder = document.getElementById('placeholder');
+        const loader = document.getElementById('loader');
+        const results = document.getElementById('results');
+        const outputActions = document.getElementById('output-actions');
+        const copyBtn = document.getElementById('copy-btn');
+        const pdfBtn = document.getElementById('pdf-btn');
+        const toast = document.getElementById('toast');
+        const toggleDarkMode = document.getElementById('toggle-dark-mode');
+        const toggleLanguage = document.getElementById('toggle-language');
+        
+        // Section toggle elements
+        const sectionToggles = document.getElementById('section-toggles');
+        const toggleQuestionsCheckbox = document.getElementById('toggle-questions');
+        const toggleAnswersCheckbox = document.getElementById('toggle-answers');
+        const toggleHintsCheckbox = document.getElementById('toggle-hints');
+        const toggleAnswersLabel = document.getElementById('toggle-answers-label');
+        const toggleHintsLabel = document.getElementById('toggle-hints-label');
+        
+        // Language system
+        let currentLanguage = 'fa'; // Default to Persian
+        
+        // Translation object
+        const translations = {
+            en: {
+                title: "AI Exam Generator",
+                apiKeyLabel: "🔑 Gemini API Key",
+                apiKeyLink: "Get key from here",
+                apiKeyPlaceholder: "Enter your API key here...",
+                sourceSection: "Question Source (Optional)",
+                textTab: "Text",
+                fileTab: "File",
+                textPlaceholder: "To create questions from specific text, enter it here...",
+                generateBtn: "🚀 Generate Questions",
+                settingsTitle: "Question Settings",
+                subjectLabel: "Subject",
+                gradeLabel: "Academic Level",
+                questionTypeLabel: "Question Type",
+                difficultyLabel: "Difficulty Level",
+                questionCountLabel: "Number of Questions:",
+                includeAnswersLabel: "Include Answer Key",
+                includeHintsLabel: "Include Hints and Detailed Explanations",
+                questionsTitle: "Questions",
+                copyBtn: "Copy text",
+                printBtn: "Print / Save PDF",
+                sectionsLabel: "Show Sections:",
+                questionsSection: "Questions",
+                answersSection: "Answer Key",
+                hintsSection: "Hints",
+                placeholderText: "Generated questions will be displayed here.",
+                loadingText: "Processing... Please wait.",
+                // Select options
+                selectPlaceholder: "Select...",
+                subjects: {
+                    "عمومی": "Select...",
+                    "زبان انگلیسی": "English",
+                    "زیست شناسی": "Biology",
+                    "فیزیک": "Physics",
+                    "ریاضی": "Mathematics",
+                    "شیمی": "Chemistry"
+                },
+                grades: {
+                    "عمومی": "Select...",
+                    "دوره ابتدایی": "Elementary",
+                    "پایه اول ابتدایی": "1st Grade",
+                    "پایه دوم ابتدایی": "2nd Grade",
+                    "پایه سوم ابتدایی": "3rd Grade",
+                    "پایه چهارم ابتدایی": "4th Grade",
+                    "پایه پنجم ابتدایی": "5th Grade",
+                    "پایه ششم ابتدایی": "6th Grade",
+                    "دوره متوسطه اول": "Middle School",
+                    "پایه هفتم": "7th Grade",
+                    "پایه هشتم": "8th Grade",
+                    "پایه نهم": "9th Grade",
+                    "دوره متوسطه دوم": "High School",
+                    "پایه دهم": "10th Grade",
+                    "پایه یازدهم": "11th Grade",
+                    "پایه دوازدهم": "12th Grade",
+                    "دانشگاه": "University",
+                    "دانشگاهی": "University Level"
+                },
+                questionTypes: {
+                    "چهارگزینه‌ای با گزینه‌های انحرافی منطقی": "Multiple Choice",
+                    "صحیح/غلط": "True/False",
+                    "تشریحی کوتاه پاسخ": "Short Answer",
+                    "تشریحی بلند پاسخ": "Essay",
+                    "جای خالی": "Fill in the Blank"
+                },
+                difficulties: {
+                    "آسان": "Easy",
+                    "متوسط": "Medium",
+                    "سخت": "Hard",
+                    "بر اساس طبقه‌بندی بلوم (تمرکز بر تحلیل و ارزیابی)": "Advanced (Bloom's Taxonomy)"
+                },
+                // Toast messages
+                toastMessages: {
+                    "لطفاً کلید API Gemini را وارد کنید.": "Please enter your Gemini API key.",
+                    "لطفاً یا یک منبع محتوا ارائه دهید، یا درس و پایه تحصیلی را مشخص کنید.": "Please provide content source or specify subject and grade.",
+                    "متن با موفقیت کپی شد!": "Text copied successfully!",
+                    "خطا در کپی کردن متن.": "Error copying text.",
+                    "در حال آماده‌سازی برای چاپ...": "Preparing for print...",
+                    "پنجره چاپ باز شد.": "Print window opened."
+                },
+                // File processing messages
+                fileMessages: {
+                    "در حال پردازش فایل:": "Processing file:",
+                    "✅ فایل": "✅ File",
+                    "با موفقیت خوانده شد.": "read successfully.",
+                    "خطا در خواندن": "Error reading",
+                    "کتابخانه PDF بارگذاری نشده است.": "PDF library not loaded.",
+                    "فرمت فایل پشتیبانی نمی‌شود. لطفاً PDF یا DOCX آپلود کنید.": "File format not supported. Please upload PDF or DOCX."
+                }
+            },
+            fa: {
+                title: "تولید آزمون با هوش مصنوعی",
+                apiKeyLabel: "🔑 کلید API Gemini",
+                apiKeyLink: "دریافت کلید از اینجا",
+                apiKeyPlaceholder: "کلید API خود را اینجا وارد کنید...",
+                sourceSection: "منبع سوال (اختیاری)",
+                textTab: "متن",
+                fileTab: "فایل",
+                textPlaceholder: "برای طرح سوال از متن خاص، آن را اینجا وارد کنید...",
+                generateBtn: "🚀 تولید سوالات",
+                settingsTitle: "تنظیمات سوالات",
+                subjectLabel: "درس",
+                gradeLabel: "پایه تحصیلی",
+                questionTypeLabel: "نوع سوال",
+                difficultyLabel: "سطح دشواری",
+                questionCountLabel: "تعداد سوالات:",
+                includeAnswersLabel: "همراه با پاسخنامه",
+                includeHintsLabel: "همراه با راهنما و توضیحات تفصیلی",
+                questionsTitle: "سوالات",
+                copyBtn: "کپی کردن متن",
+                printBtn: "چاپ / ذخیره PDF",
+                sectionsLabel: "نمایش بخش‌ها:",
+                questionsSection: "سوالات",
+                answersSection: "پاسخنامه",
+                hintsSection: "راهنما",
+                placeholderText: "سوالات تولید شده در اینجا نمایش داده می‌شوند.",
+                loadingText: "در حال پردازش... لطفاً صبر کنید.",
+                selectPlaceholder: "انتخاب کنید..."
+            }
+        };
+
+        let fileContent = '';
+        let rawGeneratedText = '';
+        let parsedSections = { questions: '', answers: '', hints: '' };
+
+        textTabBtn.addEventListener('click', () => switchTab('text'));
+        fileTabBtn.addEventListener('click', () => switchTab('file'));
+        questionCountSlider.addEventListener('input', () => {
+            questionCountLabel.textContent = questionCountSlider.value;
+        });
+        fileInput.addEventListener('change', handleFile);
+        generateBtn.addEventListener('click', handleGenerate);
+        copyBtn.addEventListener('click', copyResults);
+        pdfBtn.addEventListener('click', printToPDF);
+        
+        // Dark mode toggle functionality
+        toggleDarkMode.addEventListener('change', (event) => {
+            document.documentElement.classList.toggle('dark', event.target.checked);
+            // Save preference to localStorage
+            localStorage.setItem('darkMode', event.target.checked ? 'enabled' : 'disabled');
+        });
+        
+        // Load dark mode preference on page load
+        const darkModePreference = localStorage.getItem('darkMode');
+        if (darkModePreference === 'enabled') {
+            document.documentElement.classList.add('dark');
+            toggleDarkMode.checked = true;
+        }
+        
+        // Language switching functionality
+        function updateUILanguage(lang) {
+            const t = translations[lang];
+            currentLanguage = lang;
+            
+            // Update page title and main header
+            document.title = t.title;
+            document.querySelector('h1').textContent = lang === 'fa' ? '📝  تولید آزمون با هوش مصنوعی' : `📝  ${t.title}`;
+            
+            // Update API key section
+            document.querySelector('label[for="apiKey"]').textContent = t.apiKeyLabel;
+            document.querySelector('a[href*="aistudio.google.com"]').textContent = t.apiKeyLink;
+            apiKeyInput.placeholder = t.apiKeyPlaceholder;
+            
+            // Update source section
+            document.querySelector('.lg\\:col-span-1 > div:first-child h2').textContent = t.sourceSection;
+            textTabBtn.textContent = t.textTab;
+            fileTabBtn.textContent = t.fileTab;
+            textInput.placeholder = t.textPlaceholder;
+            
+            // Update generate button
+            generateBtn.textContent = t.generateBtn;
+            
+            // Update settings panel
+            const settingsTitle = document.querySelector('.control-panel h2');
+            if (settingsTitle) settingsTitle.textContent = t.settingsTitle;
+            
+            // Update form labels
+            const labels = document.querySelectorAll('.control-panel label');
+            labels.forEach(label => {
+                const forAttr = label.getAttribute('for');
+                switch(forAttr) {
+                    case 'subject':
+                        label.textContent = t.subjectLabel;
+                        break;
+                    case 'grade':
+                        label.textContent = t.gradeLabel;
+                        break;
+                    case 'question-type':
+                        label.textContent = t.questionTypeLabel;
+                        break;
+                    case 'difficulty':
+                        label.textContent = t.difficultyLabel;
+                        break;
+                    case 'question-count':
+                        const countSpan = label.querySelector('#question-count-label');
+                        if (countSpan) {
+                            label.childNodes[0].textContent = t.questionCountLabel + ' ';
+                        }
+                        break;
+                    case 'include-answers':
+                        label.textContent = t.includeAnswersLabel;
+                        break;
+                    case 'include-hints':
+                        label.textContent = t.includeHintsLabel;
+                        break;
+                }
+            });
+            
+            // Update select options
+            if (lang === 'en') {
+                updateSelectOptions();
+            } else {
+                resetSelectOptionsToFarsi();
+            }
+            
+            // Update output section
+            document.querySelector('.lg\\:col-span-2 h2').textContent = t.questionsTitle;
+            copyBtn.title = t.copyBtn;
+            pdfBtn.title = t.printBtn;
+            
+            // Update section toggles by calling the correct function
+            updateSectionToggleLabels();
+            
+            // Update placeholder and loading text
+            const placeholderTextElem = document.querySelector('#placeholder p');
+            if (placeholderTextElem) placeholderTextElem.textContent = t.placeholderText;
+            
+            const loaderTextElem = document.querySelector('#loader p');
+            if (loaderTextElem) loaderTextElem.textContent = t.loadingText;
+            
+            // Re-render the displayed content with the new language's section headers
+            updateDisplayedContent();
+            
+            // Save language preference
+            localStorage.setItem('preferredLanguage', lang);
+        }
+        
+        function updateSelectOptions() {
+            const t = translations[currentLanguage];
+            
+            // Update subject select
+            const subjectOptions = subjectSelect.querySelectorAll('option');
+            subjectOptions.forEach(option => {
+                if (t.subjects && t.subjects[option.value]) {
+                    option.textContent = t.subjects[option.value];
+                }
+            });
+            
+            // Update grade select options and optgroups
+            const gradeOptions = gradeSelect.querySelectorAll('option');
+            const gradeOptgroups = gradeSelect.querySelectorAll('optgroup');
+            
+            gradeOptions.forEach(option => {
+                if (t.grades && t.grades[option.value]) {
+                    option.textContent = t.grades[option.value];
+                }
+            });
+            
+            gradeOptgroups.forEach(optgroup => {
+                const persianLabel = optgroup.getAttribute('data-fa-label');
+                if (t.grades && t.grades[persianLabel]) {
+                    optgroup.label = t.grades[persianLabel];
+                }
+            });
+            
+            // Update question type options
+            const questionTypeOptions = questionTypeSelect.querySelectorAll('option');
+            questionTypeOptions.forEach(option => {
+                if (t.questionTypes && t.questionTypes[option.value]) {
+                    option.textContent = t.questionTypes[option.value];
+                }
+            });
+            
+            // Update difficulty options
+            const difficultyOptions = difficultySelect.querySelectorAll('option');
+            difficultyOptions.forEach(option => {
+                if (t.difficulties && t.difficulties[option.value]) {
+                    option.textContent = t.difficulties[option.value];
+                }
+            });
+        }
+        
+        function resetSelectOptionsToFarsi() {
+            // Use innerHTML to reset to the original Farsi state
+            subjectSelect.innerHTML = `
+                <option value="عمومی">انتخاب کنید...</option>
+                <option value="زبان انگلیسی">زبان انگلیسی</option>
+                <option value="زیست شناسی">زیست شناسی</option>
+                <option value="فیزیک">فیزیک</option>
+                <option value="ریاضی">ریاضی</option>
+                <option value="شیمی">شیمی</option>
+            `;
+            
+            gradeSelect.innerHTML = `
+                <option value="عمومی">انتخاب کنید...</option>
+                <optgroup label="دوره ابتدایی" data-fa-label="دوره ابتدایی">
+                    <option value="پایه اول ابتدایی">پایه اول</option>
+                    <option value="پایه دوم ابتدایی">پایه دوم</option>
+                    <option value="پایه سوم ابتدایی">پایه سوم</option>
+                    <option value="پایه چهارم ابتدایی">پایه چهارم</option>
+                    <option value="پایه پنجم ابتدایی">پایه پنجم</option>
+                    <option value="پایه ششم ابتدایی">پایه ششم</option>
+                </optgroup>
+                <optgroup label="دوره متوسطه اول" data-fa-label="دوره متوسطه اول">
+                    <option value="پایه هفتم">پایه هفتم</option>
+                    <option value="پایه هشتم">پایه هشتم</option>
+                    <option value="پایه نهم">پایه نهم</option>
+                </optgroup>
+                <optgroup label="دوره متوسطه دوم" data-fa-label="دوره متوسطه دوم">
+                    <option value="پایه دهم">پایه دهم</option>
+                    <option value="پایه یازدهم">پایه یازدهم</option>
+                    <option value="پایه دوازدهم">پایه دوازدهم</option>
+                </optgroup>
+                 <optgroup label="دانشگاه" data-fa-label="دانشگاه">
+                    <option value="دانشگاهی">دانشگاهی</option>
+                </optgroup>
+            `;
+            
+            questionTypeSelect.innerHTML = `
+                <option value="چهارگزینه‌ای با گزینه‌های انحرافی منطقی">چهارگزینه‌ای</option>
+                <option value="صحیح/غلط">صحیح/غلط</option>
+                <option value="تشریحی کوتاه پاسخ">تشریحی (کوتاه پاسخ)</option>
+                <option value="تشریحی بلند پاسخ">تشریحی (بلند پاسخ)</option>
+                <option value="جای خالی">جای خالی</option>
+            `;
+            
+            difficultySelect.innerHTML = `
+                <option value="آسان">آسان</option>
+                <option value="متوسط">متوسط</option>
+                <option value="سخت">سخت</option>
+                <option value="بر اساس طبقه‌بندی بلوم (تمرکز بر تحلیل و ارزیابی)">پیشرفته (طبقه‌بندی بلوم)</option>
+            `;
+        }
+        
+        // Function to update section toggle labels specifically
+        function updateSectionToggleLabels() {
+            const t = translations[currentLanguage];
+            
+            // Update the main "Show Sections:" label using its ID
+            const sectionsLabel = document.getElementById('sections-label');
+            if (sectionsLabel) sectionsLabel.textContent = t.sectionsLabel;
+            
+            // Update individual toggle labels using their IDs
+            const toggleQuestionsText = document.getElementById('toggle-questions-text');
+            if (toggleQuestionsText) toggleQuestionsText.textContent = t.questionsSection;
+            
+            const toggleAnswersText = document.getElementById('toggle-answers-text');
+            if (toggleAnswersText) toggleAnswersText.textContent = t.answersSection;
+            
+            const toggleHintsText = document.getElementById('toggle-hints-text');
+            if (toggleHintsText) toggleHintsText.textContent = t.hintsSection;
+        }
+        
+        // Language toggle event listener
+        toggleLanguage.addEventListener('change', (event) => {
+            const newLang = event.target.checked ? 'fa' : 'en';
+            updateUILanguage(newLang);
+        });
+        
+        // Load language preference on page load
+        const savedLanguage = localStorage.getItem('preferredLanguage') || 'fa'; // Default to Persian
+        toggleLanguage.checked = (savedLanguage === 'fa');
+        updateUILanguage(savedLanguage);
+        // Store the original Farsi labels for optgroups
+        document.querySelectorAll('#grade optgroup').forEach(optgroup => {
+            optgroup.setAttribute('data-fa-label', optgroup.label);
+        });
+
+        function switchTab(tab) {
+            textTabContent.classList.toggle('hidden', tab !== 'text');
+            fileTabContent.classList.toggle('hidden', tab !== 'file');
+            textTabBtn.classList.toggle('active', tab === 'text');
+            fileTabBtn.classList.toggle('active', tab === 'file');
+        }
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileStatus.textContent = `در حال پردازش فایل: ${file.name}...`;
+            fileContent = '';
+            const reader = new FileReader();
+
+            const processText = (text) => {
+                fileContent = text;
+                fileStatus.textContent = `✅ فایل ${file.name} با موفقیت خوانده شد.`;
+            };
+
+            const handleError = (err, type) => {
+                fileStatus.textContent = `خطا در خواندن ${type}: ${err.message}`;
+                fileContent = '';
+            };
+
+            if (file.type === "application/pdf") {
+                reader.onload = (e) => {
+                    if (!window.pdfjsLib) {
+                        handleError({message: "کتابخانه PDF بارگذاری نشده است."}, "PDF");
+                        return;
+                    }
+                    const typedarray = new Uint8Array(e.target.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        const pages = Array.from({ length: pdf.numPages }, (_, i) =>
+                            pdf.getPage(i + 1).then(page => page.getTextContent())
+                        );
+                        return Promise.all(pages);
+                    }).then(textContents => {
+                        const text = textContents.map(tc => tc.items.map(item => item.str).join(' ')).join('\n');
+                        processText(text);
+                    }).catch(err => handleError(err, 'PDF'));
+                };
+                reader.readAsArrayBuffer(file);
+            } else if (file.name.endsWith('.docx')) {
+                reader.onload = (e) => {
+                    mammoth.extractRawText({ arrayBuffer: e.target.result })
+                        .then(result => processText(result.value))
+                        .catch(err => handleError(err, 'DOCX'));
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                fileStatus.textContent = "فرمت فایل پشتیبانی نمی‌شود. لطفاً PDF یا DOCX آپلود کنید.";
+            }
+        }
+
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 text-white py-2 px-5 rounded-full text-sm shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+        
+        function translateSectionHeaders(text) {
+            // This function translates headers from Persian to the current language (English)
+            const t = translations[currentLanguage];
+            if (currentLanguage === 'en') {
+                 return text
+                    .replace(/\*\*سوالات\*\*/g, `**${t.questionsSection}**`)
+                    .replace(/\*\*پاسخنامه\*\*/g, `**${t.answersSection}**`)
+                    .replace(/\*\*راهنما\*\*/g, `**${t.hintsSection}**`);
+            }
+            return text; // Return original text if not English
+        }
+        
+        function simpleMarkdownToHtml(text) {
+             return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
+                .replace(/^- (.*$)/gm, '<p>&bull; $1</p>') 
+                .replace(/\n/g, '<br>');
+        }
+
+        async function handleGenerate() {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                showToast("لطفاً کلید API Gemini را وارد کنید.", true);
+                return;
+            }
+
+            let currentContent = textTabBtn.classList.contains('active') ? textInput.value.trim() : fileContent;
+            const subject = subjectSelect.value;
+            const grade = gradeSelect.value;
+
+            if (!currentContent && (subject === 'عمومی' || grade === 'عمومی')) {
+                showToast("لطفاً یا یک منبع محتوا ارائه دهید، یا درس و پایه تحصیلی را مشخص کنید.", true);
+                return;
+            }
+
+            placeholder.classList.add('hidden');
+            results.innerHTML = '';
+            results.classList.add('hidden');
+            loader.classList.remove('hidden');
+            loader.classList.add('flex');
+            outputActions.classList.add('hidden');
+            sectionToggles.classList.add('hidden');
+            
+            const difficultyValue = difficultySelect.value;
+            let modelName = 'gemini-1.5-flash-latest'; // A good default
+
+            const prompt = constructPrompt(currentContent);
+            
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.4,
+                            topK: 1,
+                            topP: 1,
+                            maxOutputTokens: 8192,
+                        },
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error.message || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                rawGeneratedText = data.candidates[0].content.parts[0].text;
+                
+                // Parse sections for toggling
+                parseSections(rawGeneratedText);
+                
+                // Setup section toggles
+                setupSectionToggles();
+                
+                // Initially display all content
+                updateDisplayedContent();
+
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([results]).catch((err) => console.error("MathJax typesetting error:", err));
+                }
+                
+                results.classList.remove('hidden');
+                outputActions.classList.remove('hidden');
+                sectionToggles.classList.remove('hidden');
+
+            } catch (error) {
+                results.innerHTML = `<p class="text-red-500"><strong>خطا:</strong> ${error.message}</p><p class="text-slate-500 mt-2">لطفاً از معتبر بودن کلید API، اتصال اینترنت و دسترسی به مدل (${modelName}) اطمینان حاصل کنید.</p>`;
+                results.classList.remove('hidden');
+            } finally {
+                loader.classList.add('hidden');
+                loader.classList.remove('flex');
+            }
+        }
+
+        function constructPrompt(content) {
+            const subject = subjectSelect.value;
+            const grade = gradeSelect.value;
+            const questionType = questionTypeSelect.value;
+            const difficulty = difficultySelect.value;
+            const count = questionCountSlider.value;
+            const includeAnswers = includeAnswersCheckbox.checked;
+            const includeHints = includeHintsCheckbox.checked;
+
+            let prompt = `شما یک دستیار متخصص در طراحی آزمون‌های آموزشی به زبان فارسی و بر اساس سیستم آموزشی ایران هستید. وظیفه شما تولید سوالات دقیق و استاندارد بر اساس تنظیمات مشخص شده است.`;
+            
+            if (content) {
+                prompt += `\n\n**محتوای منبع:**\n---\n${content}\n---`;
+            }
+
+            prompt += `\n\n**تنظیمات آزمون:**
+- **درس:** ${subject}
+- **پایه تحصیلی:** ${grade}
+- **تعداد سوالات:** ${count} عدد
+- **نوع سوالات:** ${questionType}
+- **سطح دشواری:** ${difficulty}
+
+**دستورالعمل‌های حیاتی برای قالب‌بندی خروجی (حتماً رعایت شود):**
+1.  **قانون انطباق:** تمام سوالات باید مطابق با سرفصل‌ها و استانداردهای آموزشی **وزارت آموزش و پرورش ایران** (برای مقاطع مدرسه) و **وزارت علوم، تحقیقات و فناوری ایران** (برای مقاطع دانشگاهی) باشد.
+2.  **قانون خروجی خالص:** کل پاسخ شما باید فقط و فقط شامل سوالات (و در صورت درخواست، پاسخنامه و راهنما) باشد. هیچ متن مقدماتی، جمله پایانی، یا هر نوشته دیگری خارج از ساختار سوالات اضافه نکن.
+3.  پاسخ خود را با فرمت Markdown ساده و کاملاً به زبان فارسی ارائه دهید.
+4.  هر سوال را با شماره و به صورت **بولد** شروع کنید (مثلاً: **1.**).
+5.  **برای سوالات چندگزینه‌ای، هر گزینه (الف، ب، ج، د) باید در یک خط کاملاً جدید و با یک خط تیره (-) در ابتدای آن شروع شود.** مثال:
+    - الف) گزینه اول
+    - ب) گزینه دوم
+6.  تمام عبارات و فرمول‌های ریاضی را **فقط و فقط** با علامت دلار ($) برای فرمول‌های داخل متن و دو علامت دلار ($$) برای فرمول‌های نمایشی در دو طرف احاطه کن. مثال: $E=mc^2$ یا $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$.
+7.  **مهمترین قانون:** هرگز، تحت هیچ شرایطی، فرمول‌های LaTeX را داخل بلوک کد (\`\`\`) قرار نده. آنها باید مستقیماً در متن باشند.
+8.  **قانون خوانایی:** همیشه بین متن فارسی و فرمول‌های ریاضی یک فاصله (space) قرار بده تا از چسبیدن آن‌ها به هم جلوگیری شود. مثال غلط: \`اگر$x=2$باشد\`. مثال صحیح: \`اگر $x=2$ باشد\`.
+`;
+
+            // Add section ordering based on what's enabled
+            let sectionNumber = 9;
+            
+            if (includeAnswers && includeHints) {
+                prompt += `${sectionNumber}.  **پاسخنامه:** در انتهای کل خروجی، یک بخش جداگانه با عنوان "**پاسخنامه**" ایجاد کن و پاسخ‌ها را به صورت واضح لیست کن (مثلاً: 1. ب، 2. الف).\n`;
+                sectionNumber++;
+                prompt += `${sectionNumber}.  **راهنما و توضیحات تفصیلی:** بعد از بخش پاسخنامه، یک بخش جداگانه با عنوان "**راهنما**" ایجاد کن و برای هر سوال توضیح کامل و تفصیلی ارائه دهید که شامل موارد زیر باشد:\n`;
+                prompt += `    - **تحلیل سوال:** درباره موضوع سوال و مفاهیم مرتبط توضیح دهید\n`;
+                prompt += `    - **روش حل:** مرحله به مرحله نحوه رسیدن به پاسخ صحیح را شرح دهید\n`;
+                prompt += `    - **نکات مهم:** نکات کلیدی و اشتباهات رایج را ذکر کنید\n`;
+                prompt += `    - **مفاهیم مرتبط:** مفاهیم و فرمول‌های مرتبط را یاد آوری کنید\n`;
+            } else if (includeAnswers) {
+                prompt += `${sectionNumber}.  **پاسخنامه:** در انتهای کل خروجی، یک بخش جداگانه با عنوان "**پاسخنامه**" ایجاد کن و پاسخ‌ها را به صورت واضح لیست کن (مثلاً: 1. ب، 2. الف).\n`;
+            } else if (includeHints) {
+                prompt += `${sectionNumber}.  **راهنما و توضیحات تفصیلی:** در انتهای کل خروجی، یک بخش جداگانه با عنوان "**راهنما**" ایجاد کن و برای هر سوال توضیح کامل و تفصیلی ارائه دهید که شامل موارد زیر باشد:\n`;
+                prompt += `    - **تحلیل سوال:** درباره موضوع سوال و مفاهیم مرتبط توضیح دهید\n`;
+                prompt += `    - **روش حل:** مرحله به مرحله نحوه رسیدن به پاسخ صحیح را شرح دهید\n`;
+                prompt += `    - **نکات مهم:** نکات کلیدی و اشتباهات رایج را ذکر کنید\n`;
+                prompt += `    - **مفاهیم مرتبط:** مفاهیم و فرمول‌های مرتبط را یاد آوری کنید\n`;
+            } else {
+                prompt += `${sectionNumber}.  فقط سوالات را بدون هیچ پاسخنامه یا راهنمایی ارائه دهید.\n`;
+            }
+            
+            return prompt;
+        }
+
+        function parseSections(text) {
+            // Reset parsed sections
+            parsedSections = { questions: '', answers: '', hints: '' };
+            
+            // Look for answer key section
+            const answerKeyMatch = text.match(/\*\*پاسخنامه\*\*([\s\S]*?)(?=\*\*راهنما\*\*|$)/i);
+            
+            // Look for hints section
+            const hintsMatch = text.match(/\*\*راهنما\*\*([\s\S]*)$/i);
+            
+            // Extract questions section (everything before answer key or hints)
+            let questionsEndIndex = text.length;
+            if (answerKeyMatch) {
+                questionsEndIndex = Math.min(questionsEndIndex, text.indexOf(answerKeyMatch[0]));
+            }
+            if (hintsMatch && !answerKeyMatch) { // only check for hints if no answer key was found before it
+                questionsEndIndex = Math.min(questionsEndIndex, text.indexOf(hintsMatch[0]));
+            }
+            
+            parsedSections.questions = text.substring(0, questionsEndIndex).trim();
+            
+            if (answerKeyMatch) {
+                parsedSections.answers = '**پاسخنامه**' + answerKeyMatch[1].trim();
+            }
+            
+            if (hintsMatch) {
+                parsedSections.hints = '**راهنما**' + hintsMatch[1].trim();
+            }
+        }
+        
+        function setupSectionToggles() {
+            // Show/hide toggle labels based on what sections exist
+            toggleAnswersLabel.classList.toggle('hidden', !parsedSections.answers);
+            toggleHintsLabel.classList.toggle('hidden', !parsedSections.hints);
+            
+            // Update section toggle labels with current language
+            updateSectionToggleLabels();
+            
+            // Add event listeners for toggle changes
+            toggleQuestionsCheckbox.removeEventListener('change', updateDisplayedContent);
+            toggleAnswersCheckbox.removeEventListener('change', updateDisplayedContent);
+            toggleHintsCheckbox.removeEventListener('change', updateDisplayedContent);
+            
+            toggleQuestionsCheckbox.addEventListener('change', updateDisplayedContent);
+            toggleAnswersCheckbox.addEventListener('change', updateDisplayedContent);
+            toggleHintsCheckbox.addEventListener('change', updateDisplayedContent);
+        }
+        
+        function updateDisplayedContent() {
+            let displayContent = '';
+            
+            // Add questions section if enabled
+            if (toggleQuestionsCheckbox.checked && parsedSections.questions) {
+                displayContent += parsedSections.questions;
+            }
+            
+            // Add answers section if enabled and exists
+            if (toggleAnswersCheckbox.checked && parsedSections.answers) {
+                if (displayContent) displayContent += '\n\n';
+                displayContent += parsedSections.answers;
+            }
+            
+            // Add hints section if enabled and exists
+            if (toggleHintsCheckbox.checked && parsedSections.hints) {
+                if (displayContent) displayContent += '\n\n';
+                displayContent += parsedSections.hints;
+            }
+            
+            // Translate section headers if language is English
+            let finalContent = translateSectionHeaders(displayContent);
+            
+            // Update the displayed content
+            results.innerHTML = simpleMarkdownToHtml(finalContent);
+            
+            // Re-render MathJax if available
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([results]).catch((err) => console.error("MathJax typesetting error:", err));
+            }
+        }
+        
+        function copyResults() {
+            // Get the currently displayed content based on toggle states
+            let contentToCopy = '';
+            
+            if (toggleQuestionsCheckbox.checked && parsedSections.questions) {
+                contentToCopy += parsedSections.questions;
+            }
+            
+            if (toggleAnswersCheckbox.checked && parsedSections.answers) {
+                if (contentToCopy) contentToCopy += '\n\n';
+                contentToCopy += parsedSections.answers;
+            }
+            
+            if (toggleHintsCheckbox.checked && parsedSections.hints) {
+                if (contentToCopy) contentToCopy += '\n\n';
+                contentToCopy += parsedSections.hints;
+            }
+            
+            // Fallback to raw text if no sections are parsed
+            const textToCopy = contentToCopy || rawGeneratedText;
+            
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast("متن با موفقیت کپی شد!");
+            }).catch(err => {
+                showToast("خطا در کپی کردن متن.", true);
+            });
+        }
+
+        async function printToPDF() {
+            showToast("در حال آماده‌سازی برای چاپ...");
+            
+            // Wait for MathJax to finish rendering before printing
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                await MathJax.typesetPromise([results]);
+            }
+            
+            window.print();
+            showToast("پنجره چاپ باز شد.");
+        }
+
+    });
+    </script>
+</body>
+</html>
